@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#MillerMetrics — Fantasy Football Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,900;1,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #06090f;
+  --surface: #0d1422;
+  --surface2: #141d30;
+  --surface3: #1a2540;
+  --border: #1e2d4a;
+  --border2: #253558;
+  --green: #00e676;
+  --green-dim: #00b85a;
+  --gold: #ffc700;
+  --red: #ff4757;
+  --blue: #2979ff;
+  --text: #dde4f0;
+  --text-muted: #5e7399;
+  --text-dim: #8a9fc0;
+  --win: #00e676;
+  --lose: #ff4757;
+  --font-head: 'Barlow Condensed', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* HEADER */
+.site-header {
+  background: linear-gradient(180deg, #0d1830 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+.logo {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.logo span { color: var(--green); }
+.logo small {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  display: block;
+  letter-spacing: 0.15em;
+  font-weight: 400;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* NAV TABS */
+.nav-tabs {
+  display: flex;
+  gap: 0;
+  list-style: none;
+  align-items: stretch;
+  height: 100%;
+}
+.nav-tabs li { display: flex; }
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 1.25rem;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+  border-bottom: 3px solid transparent;
+}
+.tab-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0; right: 0;
+  height: 3px;
+  background: var(--green);
+  transform: scaleX(0);
+  transition: transform 0.2s;
+}
+.tab-btn:hover { color: var(--text-dim); }
+.tab-btn.active { color: var(--green); }
+.tab-btn.active::after { transform: scaleX(1); }
+
+/* MAIN LAYOUT */
+.main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+/* TAB PANELS */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* PAGE TITLES */
+.page-title {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 2.5rem;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+.page-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+/* STANDINGS TABLE */
+.standings-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+.toggle-group {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.toggle-btn.active {
+  background: var(--green);
+  color: #000;
+}
+
+.standings-table-wrap { overflow-x: auto; }
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.standings-table th {
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: color 0.2s;
+}
+.standings-table th:hover { color: var(--text); }
+.standings-table th.sorted { color: var(--green); }
+.standings-table th .sort-icon { margin-left: 4px; opacity: 0.5; }
+.standings-table th.sorted .sort-icon { opacity: 1; }
+.standings-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.standings-table tr { transition: background 0.15s; }
+.standings-table tbody tr:hover { background: var(--surface); }
+.standings-table tbody tr.former-member { opacity: 0.55; }
+
+.rank-cell {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.4rem;
+  color: var(--text-muted);
+  width: 50px;
+}
+.rank-cell.top3 { color: var(--gold); }
+
+.player-cell { display: flex; flex-direction: column; }
+.player-name {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+.player-full { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+.former-badge {
+  font-size: 0.6rem;
+  background: var(--surface3);
+  color: var(--text-muted);
+  border: 1px solid var(--border2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.record-cell { font-weight: 600; font-size: 0.95rem; }
+.win-pct {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.win-pct.top { color: var(--green); }
+.ppg-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.ppg-val { font-weight: 600; min-width: 52px; }
+.ppg-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface3);
+  flex: 1;
+  min-width: 60px;
+  overflow: hidden;
+}
+.ppg-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--green-dim), var(--green));
+  transition: width 0.5s ease;
+}
+
+/* H2H MATRIX */
+.h2h-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .h2h-layout { grid-template-columns: 1fr; }
+}
+
+.matrix-wrap { overflow-x: auto; }
+.h2h-matrix {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.h2h-matrix th, .h2h-matrix td {
+  padding: 0;
+  border: 1px solid var(--border);
+}
+.h2h-matrix .corner { width: 80px; }
+.h2h-matrix .row-label {
+  background: var(--surface);
+  padding: 0.4rem 0.6rem;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: var(--text-dim);
+  width: 80px;
+}
+.h2h-matrix .col-label {
+  background: var(--surface);
+  padding: 0.4rem 0.5rem;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--text-muted);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  height: 80px;
+  vertical-align: bottom;
+  min-width: 44px;
+}
+.h2h-cell {
+  width: 44px;
+  height: 44px;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+  position: relative;
+}
+.h2h-cell.self {
+  background: var(--bg);
+  cursor: default;
+}
+.h2h-cell.no-games {
+  background: var(--bg);
+  cursor: default;
+}
+.h2h-cell:not(.self):not(.no-games):hover {
+  filter: brightness(1.35);
+  z-index: 2;
+}
+.h2h-cell:not(.self):not(.no-games).selected {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+  z-index: 3;
+}
+.cell-wins {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+}
+.cell-total {
+  font-size: 0.62rem;
+  opacity: 0.65;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* RIVALRY CARD */
+.rivalry-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  position: sticky;
+  top: 80px;
+}
+.rivalry-card h3 {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.rivalry-empty {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+.rivalry-empty .icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+
+.vs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.vs-player { text-align: center; flex: 1; }
+.vs-name {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.6rem;
+  display: block;
+  line-height: 1;
+}
+.vs-record {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.vs-sep {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.dominance-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface3);
+  overflow: hidden;
+  margin: 1rem 0 0.3rem;
+}
+.dominance-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--green-dim));
+  transition: width 0.6s ease;
+}
+.dominance-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.dominance-labels span:first-child { color: var(--green); font-weight: 600; }
+
+.rivalry-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.rivalry-stat {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+}
+.rivalry-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+}
+.rivalry-stat-val {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.2rem;
+  display: block;
+  margin-top: 2px;
+}
+
+/* RECORDS */
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.record-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.record-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+.record-emoji { font-size: 1.75rem; display: block; margin-bottom: 0.5rem; }
+.record-type {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: block;
+}
+.record-value {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--gold);
+  display: block;
+  margin: 0.2rem 0;
+}
+.record-holder {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1rem;
+  display: block;
+  color: var(--text-dim);
+}
+.record-detail {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: block;
+}
+
+/* SEASONS */
+.seasons-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.year-pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.year-pill:hover { border-color: var(--border2); color: var(--text-dim); }
+.year-pill.active { background: var(--green); color: #000; border-color: var(--green); }
+
+.season-table-wrap { overflow-x: auto; }
+.season-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.season-table th {
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+}
+.season-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.season-table tbody tr:hover { background: var(--surface); }
+.finish-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 0.95rem;
+}
+.finish-1 { background: var(--gold); color: #000; }
+.finish-2 { background: #c0c0c0; color: #000; }
+.finish-3 { background: #cd7f32; color: #fff; }
+.finish-other { background: var(--surface3); color: var(--text-dim); }
+
+.team-name-season {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1rem;
+}
+.owner-name-season {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.record-wins { color: var(--win); font-weight: 600; }
+.record-losses { color: var(--text-muted); }
+.pf-val { color: var(--gold); font-weight: 600; }
+
+/* MATRIX LEGEND */
+.matrix-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.legend-swatch {
+  width: 14px; height: 14px; border-radius: 3px; display: inline-block;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* HERO STATS STRIP */
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+@media (max-width: 700px) { .hero-stats { grid-template-columns: repeat(2, 1fr); } }
+.hero-stat {
+  background: var(--surface);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+.hero-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hero-stat-val {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.9rem;
+  line-height: 1;
+  margin-top: 0.2rem;
+  color: var(--green);
+}
+.hero-stat-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo">
+      <span>#</span>MillerMetrics
+      <small>EST. 2013 &mdash; LIFETIME STATS DASHBOARD</small>
+    </div>
+    <nav>
+      <ul class="nav-tabs">
+        <li><button class="tab-btn active" data-tab="standings">🏆 Standings</button></li>
+        <li><button class="tab-btn" data-tab="h2h">⚔️ Head-to-Head</button></li>
+        <li><button class="tab-btn" data-tab="records">🥇 Records</button></li>
+        <li><button class="tab-btn" data-tab="seasons">📅 Seasons</button></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- STANDINGS TAB -->
+  <section class="tab-panel active" id="tab-standings">
+    <div class="page-title">All-Time Standings</div>
+    <div class="page-subtitle">Sorted by lifetime win percentage · 2013 – present</div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-label">Total Games Played</span>
+        <span class="hero-stat-val" id="stat-games">—</span>
+        <span class="hero-stat-sub">across all seasons</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">All-Time Win Leader</span>
+        <span class="hero-stat-val" id="stat-win-leader">—</span>
+        <span class="hero-stat-sub" id="stat-win-leader-sub">—</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Highest Win %</span>
+        <span class="hero-stat-val" id="stat-top-pct">—</span>
+        <span class="hero-stat-sub" id="stat-top-pct-sub">—</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">Avg Points/Game</span>
+        <span class="hero-stat-val" id="stat-avg-ppg">—</span>
+        <span class="hero-stat-sub">league-wide average</span>
+      </div>
+    </div>
+
+    <div class="standings-controls">
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-filter="active">Current Members</button>
+        <button class="toggle-btn" data-filter="all">All Members</button>
+      </div>
+    </div>
+
+    <div class="standings-table-wrap">
+      <table class="standings-table" id="standings-table">
+        <thead>
+          <tr>
+            <th data-sort="rank">#</th>
+            <th data-sort="name">Manager</th>
+            <th data-sort="wins">W</th>
+            <th data-sort="losses">L</th>
+            <th data-sort="games">GP</th>
+            <th data-sort="pct" class="sorted">Win % <span class="sort-icon">↓</span></th>
+            <th data-sort="ppg">Pts/G</th>
+            <th data-sort="total">Total Pts</th>
+          </tr>
+        </thead>
+        <tbody id="standings-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- H2H TAB -->
+  <section class="tab-panel" id="tab-h2h">
+    <div class="page-title">Head-to-Head Matrix</div>
+    <div class="page-subtitle">Click any cell to see the rivalry breakdown · Row beats Column</div>
+
+    <div class="h2h-layout">
+      <div>
+        <div class="matrix-legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:#450a0a"></span> Dominated</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#7f1d1d"></span> Losing Edge</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#1e293b"></span> Even</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#166534"></span> Winning Edge</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#14532d"></span> Dominant</span>
+          <span style="margin-left:auto">Numbers = wins by Row player vs Column player</span>
+        </div>
+        <div class="matrix-wrap" id="matrix-wrap"></div>
+      </div>
+      <div class="rivalry-card" id="rivalry-card">
+        <h3>⚔️ Rivalry Detail</h3>
+        <div class="rivalry-empty" id="rivalry-empty">
+          <span class="icon">👆</span>
+          Click any matchup cell<br>to see the rivalry breakdown
+        </div>
+        <div id="rivalry-detail" style="display:none"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECORDS TAB -->
+  <section class="tab-panel" id="tab-records">
+    <div class="page-title">League Records</div>
+    <div class="page-subtitle">All-time league milestones</div>
+    <div class="records-grid" id="records-grid"></div>
+  </section>
+
+  <!-- SEASONS TAB -->
+  <section class="tab-panel" id="tab-seasons">
+    <div class="page-title">Season History</div>
+    <div class="page-subtitle">Year-by-year final standings</div>
+    <div class="seasons-header" id="year-pills"></div>
+    <div class="season-table-wrap">
+      <table class="season-table">
+        <thead>
+          <tr>
+            <th>Finish</th>
+            <th>Team</th>
+            <th>Record</th>
+            <th>Points For</th>
+            <th>Points Against</th>
+            <th>Avg PPG</th>
+          </tr>
+        </thead>
+        <tbody id="season-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script id="espn-data">window.ESPN_DATA={"players":[{"name":"Scott Marburger","wins":98,"losses":62,"games":160,"pf":19636.72,"pa":0.0,"ppg":122.73,"pct":0.6125},{"name":"Daniel McElhannon","wins":7,"losses":5,"games":12,"pf":1521.0,"pa":0.0,"ppg":126.75,"pct":0.5833},{"name":"Frank Gibase","wins":91,"losses":69,"games":160,"pf":19061.02,"pa":0.0,"ppg":119.13,"pct":0.5687},{"name":"Chase Randolph","wins":88,"losses":72,"games":160,"pf":19177.16,"pa":0.0,"ppg":119.86,"pct":0.55},{"name":"Dylan Kiess","wins":88,"losses":72,"games":160,"pf":18837.28,"pa":0.0,"ppg":117.73,"pct":0.55},{"name":"Trey McMillon","wins":6,"losses":6,"games":12,"pf":1214.0,"pa":0.0,"ppg":101.17,"pct":0.5},{"name":"Greg Miller","wins":78,"losses":82,"games":160,"pf":17852.08,"pa":0.0,"ppg":111.58,"pct":0.4875},{"name":"Logan Moore","wins":72,"losses":76,"games":148,"pf":17487.64,"pa":0.0,"ppg":118.16,"pct":0.4865},{"name":"Alex Bedillion","wins":71,"losses":77,"games":148,"pf":16345.84,"pa":0.0,"ppg":110.44,"pct":0.4797},{"name":"Dominic Reinecker","wins":75,"losses":85,"games":160,"pf":17873.78,"pa":0.0,"ppg":111.71,"pct":0.4688},{"name":"Stan Stevens","wins":75,"losses":85,"games":160,"pf":18516.9,"pa":0.0,"ppg":115.73,"pct":0.4688},{"name":"Herman Ryals","wins":12,"losses":14,"games":26,"pf":3170.64,"pa":0.0,"ppg":121.95,"pct":0.4615},{"name":"Zach Jordan","wins":55,"losses":67,"games":122,"pf":14119.26,"pa":0.0,"ppg":115.73,"pct":0.4508},{"name":"Westly Shealy","wins":71,"losses":89,"games":160,"pf":17493.48,"pa":0.0,"ppg":109.33,"pct":0.4437},{"name":"Joshua Partridge","wins":69,"losses":91,"games":160,"pf":17670.06,"pa":0.0,"ppg":110.44,"pct":0.4313},{"name":"Justin Floody","wins":4,"losses":8,"games":12,"pf":1152.0,"pa":0.0,"ppg":96.0,"pct":0.3333}],"h2h_names":["Scott Marburger","Daniel McElhannon","Frank Gibase","Chase Randolph","Dylan Kiess","Trey McMillon","Greg Miller","Logan Moore","Alex Bedillion","Dominic Reinecker","Stan Stevens","Herman Ryals","Zach Jordan","Westly Shealy","Joshua Partridge","Justin Floody"],"h2h_matrix":[[0,0,7,8,17,1,10,11,8,12,12,2,7,8,8,1],[2,0,1,0,0,0,1,0,0,0,0,0,0,1,2,1],[11,0,0,11,4,0,9,9,8,12,10,0,9,12,9,1],[7,1,6,0,7,1,9,8,7,10,19,0,8,14,10,0],[4,1,13,9,0,0,10,11,12,7,7,2,9,10,9,1],[0,1,1,0,1,0,1,0,0,0,0,0,0,1,1,1],[7,0,6,7,7,0,0,7,10,10,7,4,9,9,10,2],[8,0,8,9,7,0,10,0,10,2,7,0,7,6,13,0],[8,0,6,5,4,0,7,7,0,11,9,1,4,11,6,0],[8,1,3,11,10,3,5,12,9,0,8,1,5,5,7,0],[4,2,7,4,13,1,6,8,6,7,0,1,13,8,8,1],[0,0,4,2,0,0,1,2,1,3,1,0,0,0,1,0],[2,0,4,3,4,0,5,6,12,7,6,0,0,9,8,0],[7,0,11,5,3,0,11,6,8,10,9,2,5,0,10,1],[9,0,8,7,8,0,12,3,6,10,8,2,6,9,0,1],[0,0,0,2,0,1,0,0,0,1,0,0,0,0,0,0]],"seasons":{"2013":[{"rank":1,"owner":"Stan Stevens","team":"","w":9,"l":3,"pf":1531.0,"pa":0.0},{"rank":2,"owner":"Daniel McElhannon","team":"","w":7,"l":5,"pf":1521.0,"pa":0.0},{"rank":3,"owner":"Dylan Kiess","team":"","w":7,"l":5,"pf":1481.0,"pa":0.0},{"rank":4,"owner":"Scott Marburger","team":"","w":8,"l":4,"pf":1520.0,"pa":0.0},{"rank":5,"owner":"Chase Randolph","team":"","w":6,"l":6,"pf":1502.0,"pa":0.0},{"rank":6,"owner":"Westly Shealy","team":"","w":6,"l":6,"pf":1286.0,"pa":0.0},{"rank":7,"owner":"Dominic Reinecker","team":"","w":6,"l":6,"pf":1456.0,"pa":0.0},{"rank":8,"owner":"Trey McMillon","team":"","w":6,"l":6,"pf":1214.0,"pa":0.0},{"rank":9,"owner":"Joshua Partridge","team":"","w":3,"l":9,"pf":1466.0,"pa":0.0},{"rank":10,"owner":"Frank Gibase","team":"","w":6,"l":6,"pf":1304.0,"pa":0.0},{"rank":11,"owner":"Greg Miller","team":"","w":4,"l":8,"pf":1211.0,"pa":0.0},{"rank":12,"owner":"Justin Floody","team":"","w":4,"l":8,"pf":1152.0,"pa":0.0}],"2015":[{"rank":1,"owner":"Greg Miller","team":"","w":10,"l":3,"pf":1547.0,"pa":0.0},{"rank":2,"owner":"Scott Marburger","team":"","w":9,"l":4,"pf":1523.0,"pa":0.0},{"rank":3,"owner":"Dylan Kiess","team":"","w":8,"l":5,"pf":1575.0,"pa":0.0},{"rank":4,"owner":"Frank Gibase","team":"","w":7,"l":6,"pf":1532.0,"pa":0.0},{"rank":5,"owner":"Joshua Partridge","team":"","w":7,"l":6,"pf":1587.0,"pa":0.0},{"rank":6,"owner":"Herman Ryals","team":"","w":5,"l":8,"pf":1565.0,"pa":0.0},{"rank":7,"owner":"Logan Moore","team":"","w":5,"l":8,"pf":1427.0,"pa":0.0},{"rank":8,"owner":"Alex Bedillion","team":"","w":7,"l":6,"pf":1445.0,"pa":0.0},{"rank":9,"owner":"Westly Shealy","team":"","w":4,"l":9,"pf":1480.0,"pa":0.0},{"rank":10,"owner":"Dominic Reinecker","team":"","w":7,"l":6,"pf":1221.0,"pa":0.0},{"rank":11,"owner":"Chase Randolph","team":"","w":5,"l":8,"pf":1396.0,"pa":0.0},{"rank":12,"owner":"Stan Stevens","team":"","w":4,"l":9,"pf":1406.0,"pa":0.0}],"2016":[{"rank":1,"owner":"Logan Moore","team":"","w":8,"l":5,"pf":1767.54,"pa":0.0},{"rank":2,"owner":"Scott Marburger","team":"","w":9,"l":4,"pf":1792.0,"pa":0.0},{"rank":3,"owner":"Dylan Kiess","team":"","w":8,"l":5,"pf":1577.48,"pa":0.0},{"rank":4,"owner":"Joshua Partridge","team":"","w":8,"l":5,"pf":1663.12,"pa":0.0},{"rank":5,"owner":"Herman Ryals","team":"","w":7,"l":6,"pf":1605.64,"pa":0.0},{"rank":6,"owner":"Greg Miller","team":"","w":7,"l":6,"pf":1468.62,"pa":0.0},{"rank":7,"owner":"Frank Gibase","team":"","w":6,"l":7,"pf":1531.46,"pa":0.0},{"rank":8,"owner":"Dominic Reinecker","team":"","w":6,"l":7,"pf":1401.64,"pa":0.0},{"rank":9,"owner":"Westly Shealy","team":"","w":6,"l":7,"pf":1427.46,"pa":0.0},{"rank":10,"owner":"Chase Randolph","team":"","w":4,"l":9,"pf":1391.86,"pa":0.0},{"rank":11,"owner":"Stan Stevens","team":"","w":5,"l":8,"pf":1497.5,"pa":0.0},{"rank":12,"owner":"Alex Bedillion","team":"","w":4,"l":9,"pf":1339.48,"pa":0.0}],"2017":[{"rank":1,"owner":"Frank Gibase","team":"","w":11,"l":2,"pf":2095.66,"pa":0.0},{"rank":2,"owner":"Chase Randolph","team":"","w":11,"l":2,"pf":1923.6,"pa":0.0},{"rank":3,"owner":"Scott Marburger","team":"","w":7,"l":6,"pf":1962.42,"pa":0.0},{"rank":4,"owner":"Alex Bedillion","team":"","w":8,"l":5,"pf":1682.9,"pa":0.0},{"rank":5,"owner":"Zach Jordan","team":"","w":6,"l":7,"pf":1582.24,"pa":0.0},{"rank":6,"owner":"Dominic Reinecker","team":"","w":7,"l":6,"pf":1488.14,"pa":0.0},{"rank":7,"owner":"Logan Moore","team":"","w":7,"l":6,"pf":1628.66,"pa":0.0},{"rank":8,"owner":"Dylan Kiess","team":"","w":2,"l":11,"pf":1391.54,"pa":0.0},{"rank":9,"owner":"Stan Stevens","team":"","w":6,"l":7,"pf":1714.5,"pa":0.0},{"rank":10,"owner":"Greg Miller","team":"","w":4,"l":9,"pf":1593.82,"pa":0.0},{"rank":11,"owner":"Joshua Partridge","team":"","w":4,"l":9,"pf":1535.62,"pa":0.0},{"rank":12,"owner":"Westly Shealy","team":"","w":5,"l":8,"pf":1528.3,"pa":0.0}],"2018":[{"rank":1,"owner":"Dylan Kiess","team":"","w":8,"l":5,"pf":1894.66,"pa":0.0},{"rank":2,"owner":"Scott Marburger","team":"","w":11,"l":2,"pf":1951.68,"pa":0.0},{"rank":3,"owner":"Dominic Reinecker","team":"","w":7,"l":6,"pf":1824.12,"pa":0.0},{"rank":4,"owner":"Frank Gibase","team":"","w":11,"l":2,"pf":1847.38,"pa":0.0},{"rank":5,"owner":"Greg Miller","team":"","w":7,"l":6,"pf":1539.06,"pa":0.0},{"rank":6,"owner":"Alex Bedillion","team":"","w":7,"l":6,"pf":1601.52,"pa":0.0},{"rank":7,"owner":"Zach Jordan","team":"","w":6,"l":7,"pf":1787.78,"pa":0.0},{"rank":8,"owner":"Chase Randolph","team":"","w":5,"l":8,"pf":1873.96,"pa":0.0},{"rank":9,"owner":"Logan Moore","team":"","w":6,"l":7,"pf":1791.58,"pa":0.0},{"rank":10,"owner":"Joshua Partridge","team":"","w":4,"l":9,"pf":1558.36,"pa":0.0},{"rank":11,"owner":"Stan Stevens","team":"","w":3,"l":10,"pf":1685.38,"pa":0.0},{"rank":12,"owner":"Westly Shealy","team":"","w":3,"l":10,"pf":1292.48,"pa":0.0}],"2019":[{"rank":1,"owner":"Frank Gibase","team":"","w":7,"l":6,"pf":1384.62,"pa":0.0},{"rank":2,"owner":"Greg Miller","team":"","w":8,"l":5,"pf":1431.08,"pa":0.0},{"rank":3,"owner":"Scott Marburger","team":"","w":8,"l":5,"pf":1477.74,"pa":0.0},{"rank":4,"owner":"Logan Moore","team":"","w":9,"l":4,"pf":1497.46,"pa":0.0},{"rank":5,"owner":"Chase Randolph","team":"","w":7,"l":6,"pf":1376.84,"pa":0.0},{"rank":6,"owner":"Westly Shealy","team":"","w":7,"l":6,"pf":1463.02,"pa":0.0},{"rank":7,"owner":"Dylan Kiess","team":"","w":7,"l":6,"pf":1360.0,"pa":0.0},{"rank":8,"owner":"Dominic Reinecker","team":"","w":6,"l":7,"pf":1355.62,"pa":0.0},{"rank":9,"owner":"Alex Bedillion","team":"","w":5,"l":8,"pf":1296.54,"pa":0.0},{"rank":10,"owner":"Zach Jordan","team":"","w":5,"l":8,"pf":1416.74,"pa":0.0},{"rank":11,"owner":"Joshua Partridge","team":"","w":5,"l":8,"pf":1284.86,"pa":0.0},{"rank":12,"owner":"Stan Stevens","team":"","w":4,"l":9,"pf":1264.64,"pa":0.0}],"2020":[{"rank":1,"owner":"Westly Shealy","team":"","w":7,"l":6,"pf":1623.32,"pa":0.0},{"rank":2,"owner":"Joshua Partridge","team":"","w":7,"l":6,"pf":1408.44,"pa":0.0},{"rank":3,"owner":"Alex Bedillion","team":"","w":8,"l":5,"pf":1448.66,"pa":0.0},{"rank":4,"owner":"Scott Marburger","team":"","w":10,"l":3,"pf":1507.42,"pa":0.0},{"rank":5,"owner":"Logan Moore","team":"","w":7,"l":6,"pf":1344.32,"pa":0.0},{"rank":6,"owner":"Greg Miller","team":"","w":7,"l":6,"pf":1238.22,"pa":0.0},{"rank":7,"owner":"Dominic Reinecker","team":"","w":5,"l":8,"pf":1252.62,"pa":0.0},{"rank":8,"owner":"Dylan Kiess","team":"","w":6,"l":7,"pf":1313.84,"pa":0.0},{"rank":9,"owner":"Chase Randolph","team":"","w":5,"l":8,"pf":1516.44,"pa":0.0},{"rank":10,"owner":"Frank Gibase","team":"","w":6,"l":7,"pf":1366.44,"pa":0.0},{"rank":11,"owner":"Stan Stevens","team":"","w":5,"l":8,"pf":1325.58,"pa":0.0},{"rank":12,"owner":"Zach Jordan","team":"","w":5,"l":8,"pf":1409.76,"pa":0.0}],"2021":[{"rank":1,"owner":"Westly Shealy","team":"","w":10,"l":4,"pf":1607.24,"pa":0.0},{"rank":2,"owner":"Dominic Reinecker","team":"","w":10,"l":4,"pf":1730.1,"pa":0.0},{"rank":3,"owner":"Scott Marburger","team":"","w":7,"l":7,"pf":1592.64,"pa":0.0},{"rank":4,"owner":"Greg Miller","team":"","w":7,"l":7,"pf":1468.44,"pa":0.0},{"rank":5,"owner":"Zach Jordan","team":"","w":8,"l":6,"pf":1602.06,"pa":0.0},{"rank":6,"owner":"Stan Stevens","team":"","w":8,"l":6,"pf":1493.56,"pa":0.0},{"rank":7,"owner":"Logan Moore","team":"","w":3,"l":11,"pf":1508.88,"pa":0.0},{"rank":8,"owner":"Joshua Partridge","team":"","w":6,"l":8,"pf":1276.82,"pa":0.0},{"rank":9,"owner":"Dylan Kiess","team":"","w":6,"l":8,"pf":1478.12,"pa":0.0},{"rank":10,"owner":"Chase Randolph","team":"","w":7,"l":7,"pf":1463.92,"pa":0.0},{"rank":11,"owner":"Frank Gibase","team":"","w":7,"l":7,"pf":1466.56,"pa":0.0},{"rank":12,"owner":"Alex Bedillion","team":"","w":5,"l":9,"pf":1341.48,"pa":0.0}],"2022":[{"rank":1,"owner":"Alex Bedillion","team":"","w":8,"l":6,"pf":1504.58,"pa":0.0},{"rank":2,"owner":"Dominic Reinecker","team":"","w":10,"l":4,"pf":1765.6,"pa":0.0},{"rank":3,"owner":"Chase Randolph","team":"","w":8,"l":6,"pf":1583.2,"pa":0.0},{"rank":4,"owner":"Dylan Kiess","team":"","w":10,"l":4,"pf":1729.88,"pa":0.0},{"rank":5,"owner":"Greg Miller","team":"","w":8,"l":6,"pf":1569.68,"pa":0.0},{"rank":6,"owner":"Westly Shealy","team":"","w":8,"l":6,"pf":1619.16,"pa":0.0},{"rank":7,"owner":"Frank Gibase","team":"","w":4,"l":10,"pf":1634.82,"pa":0.0},{"rank":8,"owner":"Joshua Partridge","team":"","w":5,"l":9,"pf":1395.38,"pa":0.0},{"rank":9,"owner":"Zach Jordan","team":"","w":4,"l":10,"pf":1564.94,"pa":0.0},{"rank":10,"owner":"Stan Stevens","team":"","w":6,"l":8,"pf":1524.24,"pa":0.0},{"rank":11,"owner":"Scott Marburger","team":"","w":7,"l":7,"pf":1577.02,"pa":0.0},{"rank":12,"owner":"Logan Moore","team":"","w":6,"l":8,"pf":1590.26,"pa":0.0}],"2023":[{"rank":1,"owner":"Stan Stevens","team":"","w":8,"l":6,"pf":1761.26,"pa":0.0},{"rank":2,"owner":"Frank Gibase","team":"","w":10,"l":4,"pf":1652.2,"pa":0.0},{"rank":3,"owner":"Logan Moore","team":"","w":8,"l":6,"pf":1748.94,"pa":0.0},{"rank":4,"owner":"Alex Bedillion","team":"","w":9,"l":5,"pf":1732.6,"pa":0.0},{"rank":5,"owner":"Zach Jordan","team":"","w":8,"l":6,"pf":1613.08,"pa":0.0},{"rank":6,"owner":"Dylan Kiess","team":"","w":8,"l":6,"pf":1614.32,"pa":0.0},{"rank":7,"owner":"Westly Shealy","team":"","w":6,"l":8,"pf":1393.22,"pa":0.0},{"rank":8,"owner":"Chase Randolph","team":"","w":8,"l":6,"pf":1565.32,"pa":0.0},{"rank":9,"owner":"Joshua Partridge","team":"","w":3,"l":11,"pf":1395.14,"pa":0.0},{"rank":10,"owner":"Scott Marburger","team":"","w":6,"l":8,"pf":1505.1,"pa":0.0},{"rank":11,"owner":"Greg Miller","team":"","w":6,"l":8,"pf":1634.76,"pa":0.0},{"rank":12,"owner":"Dominic Reinecker","team":"","w":4,"l":10,"pf":1389.6,"pa":0.0}],"2024":[{"rank":1,"owner":"Scott Marburger","team":"","w":8,"l":6,"pf":1671.26,"pa":0.0},{"rank":2,"owner":"Dylan Kiess","team":"","w":10,"l":4,"pf":1776.42,"pa":0.0},{"rank":3,"owner":"Chase Randolph","team":"","w":12,"l":2,"pf":1786.82,"pa":0.0},{"rank":4,"owner":"Stan Stevens","team":"","w":9,"l":5,"pf":1644.0,"pa":0.0},{"rank":5,"owner":"Joshua Partridge","team":"","w":8,"l":6,"pf":1543.72,"pa":0.0},{"rank":6,"owner":"Frank Gibase","team":"","w":9,"l":5,"pf":1583.84,"pa":0.0},{"rank":7,"owner":"Westly Shealy","team":"","w":4,"l":10,"pf":1315.24,"pa":0.0},{"rank":8,"owner":"Greg Miller","team":"","w":3,"l":11,"pf":1536.94,"pa":0.0},{"rank":9,"owner":"Dominic Reinecker","team":"","w":3,"l":11,"pf":1473.66,"pa":0.0},{"rank":10,"owner":"Logan Moore","team":"","w":5,"l":9,"pf":1608.14,"pa":0.0},{"rank":11,"owner":"Zach Jordan","team":"","w":7,"l":7,"pf":1511.64,"pa":0.0},{"rank":12,"owner":"Alex Bedillion","team":"","w":6,"l":8,"pf":1568.48,"pa":0.0}],"2025":[{"rank":1,"owner":"Chase Randolph","team":"","w":10,"l":4,"pf":1797.2,"pa":0.0},{"rank":2,"owner":"Joshua Partridge","team":"","w":9,"l":5,"pf":1555.6,"pa":0.0},{"rank":3,"owner":"Scott Marburger","team":"","w":8,"l":6,"pf":1556.44,"pa":0.0},{"rank":4,"owner":"Logan Moore","team":"","w":8,"l":6,"pf":1574.86,"pa":0.0},{"rank":5,"owner":"Dylan Kiess","team":"","w":8,"l":6,"pf":1645.02,"pa":0.0},{"rank":6,"owner":"Stan Stevens","team":"","w":8,"l":6,"pf":1669.24,"pa":0.0},{"rank":7,"owner":"Greg Miller","team":"","w":7,"l":7,"pf":1613.46,"pa":0.0},{"rank":8,"owner":"Zach Jordan","team":"","w":6,"l":8,"pf":1631.02,"pa":0.0},{"rank":9,"owner":"Frank Gibase","team":"","w":7,"l":7,"pf":1662.04,"pa":0.0},{"rank":10,"owner":"Westly Shealy","team":"","w":5,"l":9,"pf":1458.04,"pa":0.0},{"rank":11,"owner":"Dominic Reinecker","team":"","w":4,"l":10,"pf":1515.68,"pa":0.0},{"rank":12,"owner":"Alex Bedillion","team":"","w":4,"l":10,"pf":1384.6,"pa":0.0}]},"records_raw":{"highest_score":{"pts":204.68,"player":"Zach Jordan","year":2022,"period":8},"largest_margin":{"margin":129.74,"winner":"Logan Moore","loser":"Chase Randolph","year":2023,"period":5},"best_season_pct":{"pct":0.8571428571428571,"player":"Chase Randolph","year":2024},"worst_season_pct":{"pct":0.15384615384615385,"player":"Dylan Kiess","year":2017}},"fetched_at":"2026-04-24T10:17:01.822162","league_id":683667};</script>
+<!-- ESPN_DATA_INJECT -->
+<script>
+// ===========================
+// DATA — ESPN-AWARE LOADER
+// ===========================
+// When update.py has been run, it injects window.ESPN_DATA into this file.
+// The dashboard uses that live data automatically. If it hasn't been run yet,
+// it falls back to the hardcoded spreadsheet data below.
+
+// ---------- HARDCODED FALLBACK (from spreadsheet, last updated manually) ----------
+const FALLBACK_PLAYERS = [
+  { name:'Scott Marburger',   wins:118, games:201, losses:83,  ppg:113.94, pf:22901.82, pa:0 },
+  { name:'Chase Randolph',    wins:116, games:202, losses:86,  ppg:112.63, pf:22752.20, pa:0 },
+  { name:'Dylan Kiess',       wins:111, games:202, losses:91,  ppg:109.76, pf:22170.52, pa:0 },
+  { name:'Frank Gibase',      wins:110, games:202, losses:92,  ppg:110.90, pf:22401.72, pa:0 },
+  { name:'Logan Moore',       wins:87,  games:175, losses:88,  ppg:111.16, pf:19453.42, pa:0 },
+  { name:'Greg Miller',       wins:93,  games:190, losses:97,  ppg:104.02, pf:19764.74, pa:0 },
+  { name:'Dominic Reinecker', wins:94,  games:202, losses:108, ppg:104.45, pf:21098.96, pa:0 },
+  { name:'Westly Shealy',     wins:94,  games:203, losses:109, ppg:102.91, pf:20889.72, pa:0 },
+  { name:'Joshua Partridge',  wins:93,  games:203, losses:110, ppg:103.80, pf:21071.10, pa:0 },
+  { name:'Alex Bedillion',    wins:86,  games:188, losses:102, ppg:103.54, pf:19465.82, pa:0 },
+  { name:'Stan Stevens',      wins:91,  games:204, losses:113, ppg:106.84, pf:21795.96, pa:0 },
+  { name:'Zach Jordan',       wins:65,  games:146, losses:81,  ppg:110.59, pf:16145.56, pa:0 },
+  { name:'Daniel McElhannon', wins:15,  games:28,  losses:13,  ppg:null,   pf:2932.00,  pa:0 },
+  { name:'Herman Ryals',      wins:27,  games:44,  losses:17,  ppg:null,   pf:4834.64,  pa:0 },
+  { name:'Justin Floody',     wins:9,   games:28,  losses:19,  ppg:null,   pf:2442.00,  pa:0 },
+  { name:'Trey McMillon',     wins:7,   games:14,  losses:7,   ppg:null,   pf:1214.00,  pa:0 },
+];
+
+// Known current members (used to mark active/former in fallback mode)
+const KNOWN_ACTIVE = new Set([
+  'Scott Marburger','Chase Randolph','Dylan Kiess','Frank Gibase','Logan Moore',
+  'Greg Miller','Dominic Reinecker','Westly Shealy','Joshua Partridge',
+  'Alex Bedillion','Stan Stevens','Zach Jordan'
+]);
+
+const FALLBACK_H2H_NAMES = ['Alex Bedillion','Chase Randolph','Daniel McElhannon','Dominic Reinecker','Dylan Kiess','Frank Gibase','Greg Miller','Herman Ryals','Joshua Partridge','Justin Floody','Logan Moore','Scott Marburger','Stan Stevens','Trey McMillon','Westly Shealy','Zach Jordan'];
+const FALLBACK_H2H_MATRIX = [
+  [0,  5,  1, 12,  4,  7,  7,  2,  7,  1,  7,  9,  9,  0, 11,  4],
+  [8,  0,  1, 11,  8,  8,  9,  1, 10,  1,  7,  8, 20,  1, 15,  8],
+  [1,  1,  0,  1,  1,  1,  1,  0,  3,  1,  0,  3,  1,  0,  1,  0],
+  [9, 11,  2,  0, 10,  4,  5,  1,  7,  1, 12,  9,  9,  3,  6,  5],
+  [13, 9,  1,  8,  0, 14, 10,  2, 10,  2, 11,  5,  7,  0, 10,  9],
+  [8, 11,  1, 11,  5,  0,  9,  0, 10,  2,  9, 12, 12,  0, 11,  9],
+  [10, 7,  0, 10,  7,  6,  0,  4, 10,  2,  7,  7,  7,  0,  8,  8],
+  [1,  3,  1,  4,  3,  5,  1,  0,  2,  1,  2,  1,  2,  0,  1,  0],
+  [7,  7,  1, 11,  8,  8, 12,  2,  0,  1,  3,  8, 10,  0,  9,  6],
+  [0,  3,  1,  1,  0,  0,  0,  0,  1,  0,  0,  0,  1,  1,  1,  0],
+  [10, 9,  0,  2,  7,  8, 10,  0, 13,  0,  0,  8,  7,  0,  6,  7],
+  [8,  8,  0, 12, 17,  7, 10,  2,  9,  3, 10,  0, 13,  1, 11,  7],
+  [7,  4,  2,  7, 12,  7,  6,  1,  8,  2,  8,  4,  0,  1,  9, 13],
+  [0,  0,  1,  0,  1,  1,  1,  0,  1,  1,  0,  0,  0,  0,  1,  0],
+  [9,  5,  1, 11,  4, 12, 11,  2, 11,  1,  6,  7,  9,  0,  0,  5],
+  [11, 3,  0,  7,  4,  4,  5,  0,  8,  0,  6,  2,  6,  0,  9,  0],
+];
+
+const FALLBACK_RECORDS = [
+  { emoji:'📈', type:'Season Win % — High',     value:'85.7%',      holder:'Chase Randolph',   detail:'2024 Season' },
+  { emoji:'📉', type:'Season Win % — Low',      value:'15.4%',      holder:'Dylan Kiess',      detail:'2017 Season' },
+  { emoji:'💥', type:'Season Points For',       value:'1,786.82',   holder:'Chase Randolph',   detail:'2024 Season' },
+  { emoji:'🛡️', type:'Season Points Against',  value:'1,762.38',   holder:'Greg Miller',      detail:'2024 Season' },
+  { emoji:'🚀', type:'Single Game High Score',  value:'204.68',     holder:'Zach Jordan',      detail:'2022 Week 8 vs Frank' },
+  { emoji:'🔥', type:'Largest Margin of Victory', value:'129.74 pts', holder:'Logan Moore',    detail:'2023 Week 5 vs Chase' },
+  { emoji:'🏆', type:'All-Time Wins Leader',    value:'118 W',      holder:'Scott Marburger',  detail:'201 games played' },
+  { emoji:'⚡', type:'Highest Avg Points/Game', value:'113.9',      holder:'Scott Marburger',  detail:'201 games, active members' },
+];
+
+const FALLBACK_SEASONS = {
+  2024: [
+    { rank:1,  team:'Many Hen Wish Death Upon Ry',        owner:'Chase Randolph',    w:12, l:2,  pf:1786.82, pa:1524.90 },
+    { rank:2,  team:'Kamara Harris Is Amon',              owner:'Dylan Kiess',       w:10, l:4,  pf:1776.42, pa:1601.24 },
+    { rank:3,  team:'Chase is White',                     owner:'Stan Stevens',      w:9,  l:5,  pf:1644.00, pa:1546.46 },
+    { rank:4,  team:'Achane Josh',                        owner:'Frank Gibase',      w:9,  l:5,  pf:1583.84, pa:1564.00 },
+    { rank:5,  team:'Lisan al CeeDee',                    owner:'Scott Marburger',   w:8,  l:6,  pf:1671.26, pa:1575.16 },
+    { rank:6,  team:'Rumpnyra Taraideryn',                owner:'Joshua Partridge',  w:8,  l:6,  pf:1543.72, pa:1536.96 },
+    { rank:7,  team:'Stan Gabe me a Bijan the Plane',     owner:'Zach Jordan',       w:7,  l:7,  pf:1511.64, pa:1437.60 },
+    { rank:8,  team:'Chase Pickens on Kittle Girls',      owner:'Alex Bedillion',    w:6,  l:8,  pf:1568.48, pa:1573.16 },
+    { rank:9,  team:'Chase Eats Chubb til Zay Kareem',    owner:'Logan Moore',       w:5,  l:9,  pf:1608.14, pa:1703.96 },
+    { rank:10, team:'Diggs McChick at Olave Garden',      owner:'Westly Shealy',     w:4,  l:10, pf:1315.24, pa:1553.30 },
+    { rank:11, team:'Aiyuk from the 12 Milly Pilly',      owner:'Greg Miller',       w:3,  l:11, pf:1536.94, pa:1762.38 },
+    { rank:12, team:'Micro Penix Jr.',                    owner:'Dominic Reinecker', w:3,  l:11, pf:1473.66, pa:1641.04 },
+  ],
+  2019: [
+    { rank:1,  team:'—', owner:'Frank Gibase',      w:7, l:6, pf:1384.62, pa:1404.32 },
+    { rank:2,  team:'—', owner:'Greg Miller',       w:8, l:5, pf:1431.08, pa:1353.80 },
+    { rank:3,  team:'—', owner:'Scott Marburger',   w:8, l:5, pf:1477.74, pa:1349.02 },
+    { rank:4,  team:'—', owner:'Logan Moore',       w:9, l:4, pf:1497.46, pa:1281.20 },
+    { rank:5,  team:'—', owner:'Chase Randolph',    w:7, l:6, pf:1376.84, pa:1328.18 },
+    { rank:6,  team:'—', owner:'Westly Shealy',     w:7, l:6, pf:1463.02, pa:1516.86 },
+    { rank:7,  team:'—', owner:'Dylan Kiess',       w:7, l:6, pf:1360.00, pa:1340.78 },
+    { rank:8,  team:'—', owner:'Dominic Reinecker', w:6, l:7, pf:1355.62, pa:1460.84 },
+    { rank:9,  team:'—', owner:'Alex Bedillion',    w:5, l:8, pf:1296.54, pa:1404.78 },
+    { rank:10, team:'—', owner:'Zach Jordan',       w:5, l:8, pf:1416.74, pa:1405.92 },
+    { rank:11, team:'—', owner:'Joshua Partridge',  w:5, l:8, pf:1284.86, pa:1417.58 },
+    { rank:12, team:'—', owner:'Stan Stevens',      w:4, l:9, pf:1264.64, pa:1345.88 },
+  ],
+  2014: [
+    { rank:1,  team:'—', owner:'Herman Ryals',       w:10, l:2,  pf:1282, pa:850  },
+    { rank:2,  team:'—', owner:'Chase Randolph',     w:10, l:2,  pf:1239, pa:960  },
+    { rank:3,  team:'—', owner:'Frank Gibase',       w:7,  l:5,  pf:1057, pa:1000 },
+    { rank:4,  team:'—', owner:'Dylan Kiess',        w:6,  l:6,  pf:1051, pa:1048 },
+    { rank:5,  team:'—', owner:'Westly Shealy',      w:6,  l:6,  pf:1037, pa:1020 },
+    { rank:6,  team:'—', owner:'Dominic Reinecker',  w:6,  l:6,  pf:1029, pa:1040 },
+    { rank:7,  team:'—', owner:'Alex Bedillion',     w:6,  l:6,  pf:893,  pa:948  },
+    { rank:8,  team:'—', owner:'Daniel McElhannon',  w:5,  l:7,  pf:1022, pa:1083 },
+    { rank:9,  team:'—', owner:'Scott Marburger',    w:5,  l:7,  pf:993,  pa:1067 },
+    { rank:10, team:'—', owner:'Justin Floody',      w:4,  l:8,  pf:984,  pa:1100 },
+    { rank:11, team:'—', owner:'Joshua Partridge',   w:4,  l:8,  pf:961,  pa:1100 },
+    { rank:12, team:'—', owner:'Stan Stevens',       w:2,  l:10, pf:843,  pa:1150 },
+  ],
+  2013: [
+    { rank:1,  team:'—', owner:'Stan Stevens',       w:9, l:3, pf:1051, pa:997  },
+    { rank:2,  team:'—', owner:'Daniel McElhannon',  w:7, l:5, pf:1148, pa:1042 },
+    { rank:3,  team:'—', owner:'Dylan Kiess',        w:7, l:5, pf:1057, pa:1011 },
+    { rank:4,  team:'—', owner:'Scott Marburger',    w:8, l:4, pf:1101, pa:978  },
+    { rank:5,  team:'—', owner:'Chase Randolph',     w:6, l:6, pf:1100, pa:1053 },
+    { rank:6,  team:'—', owner:'Westly Shealy',      w:6, l:6, pf:986,  pa:929  },
+    { rank:7,  team:'—', owner:'Dominic Reinecker',  w:6, l:6, pf:1066, pa:1127 },
+    { rank:8,  team:'—', owner:'Trey McMillon',      w:6, l:6, pf:929,  pa:982  },
+    { rank:9,  team:'—', owner:'Joshua Partridge',   w:3, l:9, pf:1091, pa:1106 },
+    { rank:10, team:'—', owner:'Frank Gibase',       w:6, l:6, pf:1021, pa:993  },
+    { rank:11, team:'—', owner:'Greg Miller',        w:4, l:8, pf:913,  pa:1138 },
+    { rank:12, team:'—', owner:'Justin Floody',      w:8, l:8, pf:925,  pa:1032 },
+  ],
+};
+
+// ---------- ESPN DATA LOADER ----------
+// Transforms window.ESPN_DATA (injected by update.py) into the shape the
+// dashboard rendering functions expect.
+function loadData() {
+  const espn = window.ESPN_DATA;
+
+  if (espn) {
+    // Show a subtle "live data" badge in the header
+    const sub = document.querySelector('.logo small');
+    if (sub) {
+      const d = new Date(espn.fetched_at);
+      const stamp = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+      sub.textContent = `EST. 2013 — LIVE ESPN DATA · Updated ${stamp}`;
+    }
+
+    // PLAYERS — always use fallback (spreadsheet) for lifetime aggregate stats.
+    // ESPN is missing 2014 so its player aggregates would undercount games/wins.
+    // We still mark active status from the known active set.
+    const players = FALLBACK_PLAYERS.map(p => ({
+      ...p,
+      full:   p.name,
+      total:  p.pf,
+      active: KNOWN_ACTIVE.has(p.name),
+    }));
+
+    // H2H — already a flat matrix from update.py
+    const h2hNames  = espn.h2h_names;
+    const h2hMatrix = espn.h2h_matrix;
+
+    // SEASONS — merge ESPN data with fallback to fill any gaps (e.g. 2014)
+    const seasons = {};
+    // First load all fallback seasons as a base
+    for (const [yr, rows] of Object.entries(FALLBACK_SEASONS)) {
+      seasons[+yr] = rows;
+    }
+    // Then overlay ESPN seasons (overrides fallback where both exist)
+    for (const [yr, rows] of Object.entries(espn.seasons)) {
+      seasons[+yr] = rows.map(r => ({
+        rank:  r.rank,
+        team:  r.team || '—',
+        owner: r.owner,
+        w:     r.w,
+        l:     r.l,
+        pf:    r.pf,
+        pa:    r.pa,
+      }));
+    }
+
+    // RECORDS — build from records_raw computed by the script
+    const rr = espn.records_raw || {};
+    const records = [
+      rr.best_season_pct  ? { emoji:'📈', type:'Season Win % — High',      value: (rr.best_season_pct.pct*100).toFixed(1)+'%', holder: rr.best_season_pct.player,  detail: rr.best_season_pct.year+' Season' } : null,
+      rr.worst_season_pct ? { emoji:'📉', type:'Season Win % — Low',       value: (rr.worst_season_pct.pct*100).toFixed(1)+'%', holder: rr.worst_season_pct.player, detail: rr.worst_season_pct.year+' Season' } : null,
+      rr.highest_score    ? { emoji:'🚀', type:'Single Game High Score (reg season)', value: rr.highest_score.pts.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), holder: rr.highest_score.player, detail: rr.highest_score.year+' Week '+rr.highest_score.period } : null,
+      rr.largest_margin   ? { emoji:'🔥', type:'Largest Margin of Victory (reg season)', value: rr.largest_margin.margin.toFixed(2)+' pts', holder: rr.largest_margin.winner, detail: rr.largest_margin.year+' Week '+rr.largest_margin.period+' vs '+rr.largest_margin.loser } : null,
+      (() => { const leader = [...players].sort((a,b)=>b.wins-a.wins)[0]; return leader ? { emoji:'🏆', type:'All-Time Wins Leader', value: leader.wins+' W', holder: leader.name, detail: leader.games+' games played' } : null; })(),
+      (() => { const active = players.filter(p=>p.active&&p.ppg); const leader = active.sort((a,b)=>b.ppg-a.ppg)[0]; return leader ? { emoji:'⚡', type:'Highest Avg Points/Game', value: leader.ppg.toFixed(1), holder: leader.name, detail: 'active members' } : null; })(),
+    ].filter(Boolean);
+
+    return { players, h2hNames, h2hMatrix, seasons, records, source: 'espn' };
+  }
+
+  // ---------- FALLBACK to hardcoded spreadsheet data ----------
+  const players = FALLBACK_PLAYERS.map(p => ({
+    ...p,
+    full:   p.name,
+    total:  p.pf,
+    active: KNOWN_ACTIVE.has(p.name),
+  }));
+  return {
+    players,
+    h2hNames:  FALLBACK_H2H_NAMES,
+    h2hMatrix: FALLBACK_H2H_MATRIX,
+    seasons:   FALLBACK_SEASONS,
+    records:   FALLBACK_RECORDS,
+    source:    'fallback',
+  };
+}
+
+const { players: PLAYERS, h2hNames: H2H_NAMES, h2hMatrix: H2H_MATRIX, seasons: SEASONS, records: RECORDS } = loadData();
+
+// ===========================
+// STATE
+// ===========================
+let sortCol = 'pct';
+let sortDir = -1; // -1 = desc
+let filterMode = 'active';
+let selectedCell = null;
+let selectedYear = 2024;
+
+// ===========================
+// UTILS
+// ===========================
+function pct(wins, games) { return games > 0 ? wins / games : 0; }
+function fmtPct(val) { return (val * 100).toFixed(1) + '%'; }
+function fmtNum(n) { return n ? n.toFixed(1) : '—'; }
+function fmtPts(n) { return n ? n.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; }
+
+function getPlayerByH2hIdx(idx) {
+  const name = H2H_NAMES[idx];
+  return PLAYERS.find(p => p.name === name || p.full === name) || { name, full: name };
+}
+
+function getCellColor(wins, total) {
+  if (total === 0) return null;
+  const r = wins / total;
+  if (r >= 0.7)  return { bg: '#14532d', text: '#4ade80' };  // dominant — dark green
+  if (r >= 0.55) return { bg: '#166534', text: '#86efac' };  // winning edge — green
+  if (r >= 0.45) return { bg: '#1e293b', text: '#94a3b8' };  // roughly even — neutral
+  if (r >= 0.3)  return { bg: '#7f1d1d', text: '#fca5a5' };  // losing edge — red
+  return { bg: '#450a0a', text: '#f87171' };                  // dominated — dark red
+}
+
+// ===========================
+// STANDINGS
+// ===========================
+function renderStandings() {
+  const data = filterMode === 'active'
+    ? PLAYERS.filter(p => p.active)
+    : [...PLAYERS];
+
+  data.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'pct')    { va = pct(a.wins,a.games); vb = pct(b.wins,b.games); }
+    else if (sortCol === 'wins')   { va = a.wins;  vb = b.wins; }
+    else if (sortCol === 'losses') { va = a.losses; vb = b.losses; }
+    else if (sortCol === 'games')  { va = a.games;  vb = b.games; }
+    else if (sortCol === 'ppg')    { va = a.ppg||0; vb = b.ppg||0; }
+    else if (sortCol === 'total')  { va = a.total;  vb = b.total; }
+    else if (sortCol === 'name')   { va = a.name;   vb = b.name; return va.localeCompare(vb) * sortDir; }
+    else if (sortCol === 'rank')   { va = pct(a.wins,a.games); vb = pct(b.wins,b.games); }
+    return (va - vb) * sortDir;
+  });
+
+  const activePlayers = PLAYERS.filter(p => p.active);
+  const maxPpg = Math.max(...activePlayers.filter(p=>p.ppg).map(p=>p.ppg));
+  const minPpg = Math.min(...activePlayers.filter(p=>p.ppg).map(p=>p.ppg));
+
+  const tbody = document.getElementById('standings-body');
+  tbody.innerHTML = data.map((p, i) => {
+    const wp = pct(p.wins, p.games);
+    const rank = i + 1;
+    const topPct = filterMode === 'active' && wp >= pct(activePlayers[0].wins, activePlayers[0].games) * 0.95;
+    const ppgPct = p.ppg ? ((p.ppg - minPpg) / (maxPpg - minPpg) * 100) : 0;
+    return `
+      <tr class="${p.active ? '' : 'former-member'}">
+        <td class="rank-cell ${rank <= 3 && p.active ? 'top3' : ''}">${rank}</td>
+        <td>
+          <div class="player-cell">
+            <span class="player-name">${p.name}</span>
+            <span class="player-full">${p.full}${!p.active ? ' <span class="former-badge">FORMER</span>' : ''}</span>
+          </div>
+        </td>
+        <td class="record-cell"><span style="color:var(--win)">${p.wins}</span></td>
+        <td class="record-cell"><span style="color:var(--text-muted)">${p.losses}</span></td>
+        <td style="color:var(--text-muted)">${p.games}</td>
+        <td><span class="win-pct ${topPct ? 'top' : ''}">${fmtPct(wp)}</span></td>
+        <td>
+          ${p.ppg ? `<div class="ppg-bar-wrap">
+            <span class="ppg-val">${fmtNum(p.ppg)}</span>
+            <div class="ppg-bar"><div class="ppg-bar-fill" style="width:${ppgPct.toFixed(1)}%"></div></div>
+          </div>` : '<span style="color:var(--text-muted)">—</span>'}
+        </td>
+        <td style="color:var(--gold);font-weight:600">${fmtPts(p.total)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Update sort header
+  document.querySelectorAll('.standings-table th').forEach(th => {
+    th.classList.remove('sorted');
+    th.querySelector('.sort-icon') && (th.querySelector('.sort-icon').textContent = sortDir === -1 ? '↓' : '↑');
+  });
+  const sortedTh = document.querySelector(`.standings-table th[data-sort="${sortCol}"]`);
+  if (sortedTh) sortedTh.classList.add('sorted');
+}
+
+function renderHeroStats() {
+  const active = PLAYERS.filter(p => p.active);
+  const totalGames = Math.round(active.reduce((s,p) => s + p.games, 0) / 2);
+  document.getElementById('stat-games').textContent = totalGames.toLocaleString();
+
+  const winLeader = [...PLAYERS].sort((a,b) => b.wins - a.wins)[0];
+  document.getElementById('stat-win-leader').textContent = winLeader.name;
+  document.getElementById('stat-win-leader-sub').textContent = `${winLeader.wins} all-time wins`;
+
+  const pctLeader = [...active].sort((a,b) => pct(b.wins,b.games) - pct(a.wins,a.games))[0];
+  document.getElementById('stat-top-pct').textContent = fmtPct(pct(pctLeader.wins,pctLeader.games));
+  document.getElementById('stat-top-pct-sub').textContent = pctLeader.name;
+
+  const avgPpg = active.filter(p=>p.ppg).reduce((s,p) => s + p.ppg, 0) / active.filter(p=>p.ppg).length;
+  document.getElementById('stat-avg-ppg').textContent = fmtNum(avgPpg);
+}
+
+// ===========================
+// H2H MATRIX
+// ===========================
+function renderMatrix() {
+  // Use active players only for matrix display
+  const activeNames = new Set(PLAYERS.filter(p => p.active).map(p => p.name));
+  const orderedActive = H2H_NAMES
+    .map((name, i) => ({ idx: i, player: getPlayerByH2hIdx(i) }))
+    .filter(({ player }) => activeNames.has(player.name));
+
+  let html = '<table class="h2h-matrix"><thead><tr>';
+  html += '<th class="corner"></th>';
+  orderedActive.forEach(({player}) => {
+    html += `<th class="col-label" title="${player.full}">${player.name}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  orderedActive.forEach(({idx: rowIdx, player: rowPlayer}) => {
+    html += `<tr><th class="row-label">${rowPlayer.name}</th>`;
+    orderedActive.forEach(({idx: colIdx, player: colPlayer}) => {
+      if (rowIdx === colIdx) {
+        html += `<td class="h2h-cell self" style="background:var(--bg)"><span style="color:var(--border2)">·</span></td>`;
+        return;
+      }
+      const wins = H2H_MATRIX[rowIdx][colIdx];
+      const losses = H2H_MATRIX[colIdx][rowIdx];
+      const total = wins + losses;
+      if (total === 0) {
+        html += `<td class="h2h-cell no-games"></td>`;
+        return;
+      }
+      const col = getCellColor(wins, total);
+      html += `<td class="h2h-cell" 
+        style="background:${col.bg};color:${col.text}"
+        data-row="${rowIdx}" data-col="${colIdx}"
+        onclick="selectCell(${rowIdx},${colIdx})"
+        title="${rowPlayer.name} vs ${colPlayer.name}: ${wins}-${losses}">
+        <div class="cell-wins">${wins}</div>
+        <div class="cell-total">${total}G</div>
+      </td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('matrix-wrap').innerHTML = html;
+}
+
+function selectCell(rowIdx, colIdx) {
+  // Clear previous
+  document.querySelectorAll('.h2h-cell.selected').forEach(el => el.classList.remove('selected'));
+  // Select both cells
+  const cells = document.querySelectorAll(`[data-row="${rowIdx}"][data-col="${colIdx}"], [data-row="${colIdx}"][data-col="${rowIdx}"]`);
+  cells.forEach(c => c.classList.add('selected'));
+
+  const p1 = getPlayerByH2hIdx(rowIdx);
+  const p2 = getPlayerByH2hIdx(colIdx);
+  const w1 = H2H_MATRIX[rowIdx][colIdx];
+  const w2 = H2H_MATRIX[colIdx][rowIdx];
+  const total = w1 + w2;
+  const pct1 = (w1 / total * 100).toFixed(1);
+  const pct2 = (w2 / total * 100).toFixed(1);
+
+  const dominant = w1 > w2 ? p1 : (w2 > w1 ? p2 : null);
+  const domWins = w1 > w2 ? w1 : w2;
+  const domPct = (Math.max(w1,w2)/total*100).toFixed(1);
+
+  document.getElementById('rivalry-empty').style.display = 'none';
+  document.getElementById('rivalry-detail').style.display = 'block';
+  document.getElementById('rivalry-detail').innerHTML = `
+    <div class="vs-header">
+      <div class="vs-player">
+        <span class="vs-name" style="color:${w1>=w2?'var(--green)':'var(--text-muted)'}">${p1.name}</span>
+        <div class="vs-record">${w1}–${w2} vs ${p2.name}</div>
+      </div>
+      <div class="vs-sep">VS</div>
+      <div class="vs-player">
+        <span class="vs-name" style="color:${w2>=w1?'var(--green)':'var(--text-muted)'}">${p2.name}</span>
+        <div class="vs-record">${w2}–${w1} vs ${p1.name}</div>
+      </div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.3rem">
+      Dominance — ${p1.name}
+    </div>
+    <div class="dominance-bar">
+      <div class="dominance-fill" style="width:${pct1}%"></div>
+    </div>
+    <div class="dominance-labels">
+      <span>${p1.name}: ${pct1}%</span>
+      <span>${p2.name}: ${pct2}%</span>
+    </div>
+    <div class="rivalry-stats">
+      <div class="rivalry-stat">
+        <span class="rivalry-stat-label">Total Matchups</span>
+        <span class="rivalry-stat-val">${total}</span>
+      </div>
+      <div class="rivalry-stat">
+        <span class="rivalry-stat-label">Leader</span>
+        <span class="rivalry-stat-val" style="color:var(--green)">${dominant ? dominant.name : 'Tied'}</span>
+      </div>
+      <div class="rivalry-stat">
+        <span class="rivalry-stat-label">${p1.name} Win %</span>
+        <span class="rivalry-stat-val" style="color:${w1>=w2?'var(--green)':'var(--red)'}">${pct1}%</span>
+      </div>
+      <div class="rivalry-stat">
+        <span class="rivalry-stat-label">${p2.name} Win %</span>
+        <span class="rivalry-stat-val" style="color:${w2>=w1?'var(--green)':'var(--red)'}">${pct2}%</span>
+      </div>
+    </div>
+    ${dominant ? `<div style="margin-top:1rem;padding:0.75rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:0.78rem;color:var(--text-muted)">
+      🔥 <strong style="color:var(--gold)">${dominant.name}</strong> owns this rivalry with <strong style="color:var(--green)">${domWins} wins</strong> (${domPct}% win rate)
+    </div>` : `<div style="margin-top:1rem;padding:0.75rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:0.78rem;color:var(--text-muted)">⚖️ This rivalry is perfectly split!</div>`}
+  `;
+}
+
+// ===========================
+// RECORDS
+// ===========================
+function renderRecords() {
+  document.getElementById('records-grid').innerHTML = RECORDS.map(r => `
+    <div class="record-card">
+      <span class="record-emoji">${r.emoji}</span>
+      <span class="record-type">${r.type}</span>
+      <span class="record-value">${r.value}</span>
+      <span class="record-holder">${r.holder}</span>
+      <span class="record-detail">${r.detail}</span>
+    </div>
+  `).join('');
+}
+
+// ===========================
+// SEASONS
+// ===========================
+function renderYearPills() {
+  const years = Object.keys(SEASONS).sort((a,b) => b-a);
+  document.getElementById('year-pills').innerHTML = years.map(y => `
+    <button class="year-pill ${+y === selectedYear ? 'active' : ''}" data-year="${y}">${y}</button>
+  `).join('');
+}
+
+function renderSeason() {
+  const data = SEASONS[selectedYear];
+  document.getElementById('season-body').innerHTML = data.map(row => {
+    const finishClass = row.rank === 1 ? 'finish-1' : row.rank === 2 ? 'finish-2' : row.rank === 3 ? 'finish-3' : 'finish-other';
+    const ppg = row.pf / (row.w + row.l);
+    return `
+      <tr>
+        <td><span class="finish-badge ${finishClass}">${row.rank}</span></td>
+        <td>
+          <div class="team-name-season">${row.team !== '—' ? row.team : row.owner}</div>
+          ${row.team !== '—' ? `<div class="owner-name-season">${row.owner}</div>` : ''}
+        </td>
+        <td><span class="record-wins">${row.w}</span><span class="record-losses">–${row.l}</span></td>
+        <td class="pf-val">${fmtPts(row.pf)}</td>
+        <td style="color:var(--text-dim)">${fmtPts(row.pa)}</td>
+        <td style="color:var(--text-muted)">${fmtNum(ppg)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ===========================
+// EVENT LISTENERS
+// ===========================
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+// Standings sort
+document.querySelectorAll('.standings-table th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    if (sortCol === th.dataset.sort) {
+      sortDir *= -1;
+    } else {
+      sortCol = th.dataset.sort;
+      sortDir = sortCol === 'name' ? 1 : -1;
+    }
+    renderStandings();
+  });
+});
+
+// Filter toggle
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterMode = btn.dataset.filter;
+    renderStandings();
+  });
+});
+
+// Year pills
+document.getElementById('year-pills').addEventListener('click', e => {
+  const btn = e.target.closest('.year-pill');
+  if (!btn) return;
+  selectedYear = +btn.dataset.year;
+  document.querySelectorAll('.year-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSeason();
+});
+
+// ===========================
+// INIT
+// ===========================
+renderHeroStats();
+renderStandings();
+renderMatrix();
+renderRecords();
+renderYearPills();
+renderSeason();
+</script>
+</body>
+</html>

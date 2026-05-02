@@ -1,0 +1,49 @@
+name: Update ESPN data
+
+on:
+  # Run every Tuesday at 12:00 UTC (~7-8am ET) during NFL season.
+  # Cron only — no need to gate by month; off-season runs are cheap and
+  # produce identical output, so they cost nothing meaningful.
+  schedule:
+    - cron: "0 12 * * 2"
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+# Need write access to commit the updated index.html back to the repo
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch latest ESPN data
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+          LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
+        run: python scripts/update.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- index.html; then
+            echo "No changes to commit."
+          else
+            git add index.html
+            git commit -m "chore: refresh ESPN data ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
