@@ -18,20 +18,21 @@
   --border: #2e3038;
   --border2: #3a3d47;
 
-  /* Desaturated accents — green/red/blue intentionally muted so no single
-     hue dominates the page. Gold reserved for trophy/finish highlights. */
-  --green:     #8fb89e;  /* soft sage — wins, positive */
-  --green-dim: #6f9580;
-  --gold:      #c9b285;  /* warm muted gold — championships, 1st place */
-  --red:       #c89c95;  /* dusty rose — losses, negative */
-  --blue:      #9bb4ce;  /* pale steel — neutral data, info */
+  /* Muted-but-present accents — still well below sports-app neon, but with
+     enough chroma to feel like colors rather than tints. Gold reserved
+     for trophy/finish highlights. */
+  --green:     #6fc093;  /* sage-green — wins, positive */
+  --green-dim: #4f9876;
+  --gold:      #d4b06a;  /* warm amber — championships, 1st place */
+  --red:       #d0928a;  /* soft salmon-rose — losses, negative */
+  --blue:      #88b6df;  /* clear sky — neutral data, info */
 
   --text:       #d8dade;
   --text-muted: #8b8f99;
   --text-dim:   #686c75;
 
-  --win:  #8fb89e;
-  --lose: #c89c95;
+  --win:  #6fc093;
+  --lose: #d0928a;
 
   --font-head: 'Barlow Condensed', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
@@ -311,22 +312,7 @@ body {
   font-size: 1.1rem;
 }
 .win-pct.top { color: var(--green); }
-.ppg-bar-wrap { display: flex; align-items: center; gap: 8px; }
-.ppg-val { font-weight: 600; min-width: 52px; }
-.ppg-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--surface3);
-  flex: 1;
-  min-width: 60px;
-  overflow: hidden;
-}
-.ppg-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--green-dim), var(--green));
-  transition: width 0.5s ease;
-}
+.ppg-val { font-weight: 600; }
 
 /* H2H MATRIX */
 .h2h-layout {
@@ -750,10 +736,13 @@ body {
   line-height: 1;
 }
 @media (max-width: 600px) {
-  .league-toggle { padding: 0.5rem 1rem; flex-wrap: wrap; }
-  .league-pill .league-name { display: none; }
-  .league-pill { padding: 0.35rem 0.55rem; }
-  .league-pill .league-emoji { font-size: 1.2rem; }
+  .league-toggle { padding: 0.5rem 1rem; }
+  .league-toggle::before { display: none; }  /* drop the "LEAGUE" prefix to save room */
+  .league-pill { padding: 0.35rem 0.65rem; }
+  .league-pill .league-emoji { font-size: 1.15rem; }
+  /* Inactive pills collapse to just the emoji; the active pill keeps its name */
+  .league-pill:not(.active) .league-name { display: none; }
+  .league-pill.active .league-name { font-size: 0.8rem; }
 }
 </style>
 </head>
@@ -849,11 +838,11 @@ body {
     <div class="h2h-layout">
       <div>
         <div class="matrix-legend">
-          <span class="legend-item"><span class="legend-swatch" style="background:#3d1f24"></span> Dominated</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#2e2226"></span> Losing Edge</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#48222a"></span> Dominated</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#3a2528"></span> Losing Edge</span>
           <span class="legend-item"><span class="legend-swatch" style="background:#252630"></span> Even</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#26302a"></span> Winning Edge</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#1e2c25"></span> Dominant</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#283a2d"></span> Winning Edge</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#1f3528"></span> Dominant</span>
           <span style="margin-left:auto">Numbers = wins by Row player vs Column player</span>
         </div>
         <div class="matrix-wrap" id="matrix-wrap"></div>
@@ -1204,11 +1193,11 @@ function getPlayerByH2hIdx(idx) {
 function getCellColor(wins, total) {
   if (total === 0) return null;
   const r = wins / total;
-  if (r >= 0.7)  return { bg: '#1e2c25', text: '#a8d4ba' };  // dominant — deep sage
-  if (r >= 0.55) return { bg: '#26302a', text: '#9bc7a8' };  // winning edge — sage
+  if (r >= 0.7)  return { bg: '#1f3528', text: '#a8e0b8' };  // dominant — deep sage
+  if (r >= 0.55) return { bg: '#283a2d', text: '#a0d4ae' };  // winning edge — sage
   if (r >= 0.45) return { bg: '#252630', text: '#9da3ad' };  // roughly even — neutral
-  if (r >= 0.3)  return { bg: '#2e2226', text: '#c89c95' };  // losing edge — rose
-  return { bg: '#3d1f24', text: '#d8a8a1' };                  // dominated — deep rose
+  if (r >= 0.3)  return { bg: '#3a2528', text: '#d8a097' };  // losing edge — rose
+  return { bg: '#48222a', text: '#e0a8a1' };                  // dominated — deep rose
 }
 
 // ===========================
@@ -1233,15 +1222,12 @@ function renderStandings() {
   });
 
   const activePlayers = PLAYERS.filter(p => p.active);
-  const maxPpg = Math.max(...activePlayers.filter(p=>p.ppg).map(p=>p.ppg));
-  const minPpg = Math.min(...activePlayers.filter(p=>p.ppg).map(p=>p.ppg));
 
   const tbody = document.getElementById('standings-body');
   tbody.innerHTML = data.map((p, i) => {
     const wp = pct(p.wins, p.games);
     const rank = i + 1;
     const topPct = filterMode === 'active' && wp >= pct(activePlayers[0].wins, activePlayers[0].games) * 0.95;
-    const ppgPct = p.ppg ? ((p.ppg - minPpg) / (maxPpg - minPpg) * 100) : 0;
     return `
       <tr class="${p.active ? '' : 'former-member'}">
         <td class="rank-cell ${rank <= 3 && p.active ? 'top3' : ''}">${rank}</td>
@@ -1254,12 +1240,7 @@ function renderStandings() {
         <td class="record-cell"><span style="color:var(--text-muted)">${p.losses}</span></td>
         <td style="color:var(--text-muted)">${p.games}</td>
         <td><span class="win-pct ${topPct ? 'top' : ''}">${fmtPct(wp)}</span></td>
-        <td>
-          ${p.ppg ? `<div class="ppg-bar-wrap">
-            <span class="ppg-val">${fmtNum(p.ppg)}</span>
-            <div class="ppg-bar"><div class="ppg-bar-fill" style="width:${ppgPct.toFixed(1)}%"></div></div>
-          </div>` : '<span style="color:var(--text-muted)">—</span>'}
-        </td>
+        <td><span class="ppg-val">${p.ppg ? fmtNum(p.ppg) : '<span style="color:var(--text-muted)">—</span>'}</span></td>
         <td style="color:var(--gold);font-weight:600">${fmtPts(p.total)}</td>
       </tr>
     `;
