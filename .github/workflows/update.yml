@@ -33,7 +33,6 @@ jobs:
         env:
           ESPN_S2: ${{ secrets.ESPN_S2 }}
           SWID: ${{ secrets.SWID }}
-          LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
         run: python scripts/update.py
 
       - name: Commit refreshed data

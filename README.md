@@ -1,12 +1,19 @@
 # #MillerMetrics
 
-A self-contained fantasy football dashboard for ESPN private league **683667** —
-standings, head-to-head matrix, lifetime records, and per-season recaps.
+A self-contained fantasy football dashboard for two ESPN private leagues —
+📦 **West the Box God** (`683667`, since 2013) and 👺 **Jeepers Keepers**
+(`242712`, since 2016) — with a top-level toggle to switch between them.
+Standings, head-to-head matrix, lifetime records, and per-season recaps, per
+league.
 
-The site is a single static HTML file with the league's data baked into it as a
-JSON blob. A small Python script (`scripts/update.py`) refreshes that blob from
-ESPN's private API. A GitHub Actions workflow runs the script on a schedule, and
-GitHub Pages serves the result.
+The site is a single static HTML file with both leagues' data baked into it
+as a JSON blob. A small Python script (`scripts/update.py`) refreshes that
+blob from ESPN's private API. A GitHub Actions workflow runs the script on a
+schedule, and GitHub Pages serves the result.
+
+To add a league, edit the `LEAGUES` list in `scripts/update.py` (id, name,
+emoji, first season, and whether to apply the 2014 fallback splice) and
+re-run the script.
 
 ## Live site
 
@@ -30,10 +37,10 @@ GitHub Pages serves the result.
 `.github/workflows/update.yml` runs `scripts/update.py` every **Tuesday at
 12:00 UTC** (configurable via the `cron:` line). The script:
 
-1. Reads `ESPN_S2`, `SWID`, and `LEAGUE_ID` from environment variables (set by
-   the workflow from repository secrets)
-2. Hits ESPN's API for every season since 2013
-3. Rebuilds the standings, H2H matrix, and records
+1. Reads `ESPN_S2` and `SWID` from environment variables (set by the workflow
+   from repository secrets). League IDs are public and live in `update.py`.
+2. Hits ESPN's API for every season of each configured league
+3. Rebuilds the standings, H2H matrix, and records per league
 4. Rewrites the `<script id="espn-data">…</script>` block inside `index.html`
 
 If `index.html` actually changed, the workflow commits and pushes the update.
@@ -81,5 +88,5 @@ gets reset:
   `(root)`
 - **Settings → Actions → General → Workflow permissions**: *Read and write
   permissions*
-- **Settings → Secrets and variables → Actions**: secrets `ESPN_S2`, `SWID`,
-  `LEAGUE_ID`
+- **Settings → Secrets and variables → Actions**: secrets `ESPN_S2`, `SWID`
+  (league IDs are public — no secret needed)

@@ -2,17 +2,18 @@
 """
 #MillerMetrics — ESPN Data Fetcher
 ===================================
-Fetches all historical data from your ESPN private fantasy league
-and injects it into index.html.
+Fetches all historical data from the configured ESPN private fantasy
+leagues (see LEAGUES below) and injects a combined blob into index.html.
 
 LOCAL USE:
   1. Install Python 3 and `pip install -r requirements.txt`
-  2. Copy `.env.example` to `.env` and fill in ESPN_S2 / SWID / LEAGUE_ID
+  2. Copy `.env.example` to `.env` and fill in ESPN_S2 / SWID
   3. Run: `python scripts/update.py`
   4. Open index.html in your browser
 
 GITHUB ACTIONS:
-  ESPN_S2, SWID, and LEAGUE_ID come from repository secrets.
+  ESPN_S2 and SWID come from repository secrets. League IDs are public
+  and live in the LEAGUES list below — no secret needed.
   See .github/workflows/update.yml.
 
 CREDENTIAL REFRESH:
@@ -53,19 +54,42 @@ if _ENV_PATH.exists():
 # ============================================================
 ESPN_S2 = os.environ.get("ESPN_S2", "").strip()
 SWID    = os.environ.get("SWID", "").strip()
-try:
-    LEAGUE_ID = int(os.environ.get("LEAGUE_ID", "683667"))
-except ValueError:
-    print("ERROR: LEAGUE_ID must be an integer.")
-    sys.exit(1)
 
 if not ESPN_S2 or not SWID:
     print("ERROR: ESPN_S2 and SWID must be set (via .env locally or GitHub Secrets in CI).")
     sys.exit(1)
 
 ESPN_API_BASE = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl"
-FIRST_SEASON  = 2013
 HTML_FILE     = str(_REPO_ROOT / "index.html")
+
+# League IDs are public, not secrets — keep them in code.
+# `fallback_2014` flag controls whether to splice the spreadsheet-derived 2014
+# games (only West the Box God is missing that year from ESPN history).
+# `first_season` lets us skip years before the league existed.
+LEAGUES = [
+    {
+        "key":           "west_the_box",
+        "id":            683667,
+        "name":          "West the Box God",
+        "emoji":         "📦",
+        "first_season":  2013,
+        "fallback_2014": True,
+        # West existed before its current 12-owner core; cap the "Most Playoff
+        # Wins" record at 2017 so it reflects the current roster.
+        "playoff_records_from": 2017,
+    },
+    {
+        "key":           "jeepers",
+        "id":            242712,
+        "name":          "Jeepers Keepers",
+        "emoji":         "👺",
+        "first_season":  2016,
+        "fallback_2014": False,
+        # Jeepers' current roster has been there since the league started,
+        # so "Most Playoff Wins" goes all the way back.
+        "playoff_records_from": 2016,
+    },
+]
 # ============================================================
 
 # 2014 isn't reachable from this account's ESPN history. The per-game
@@ -189,12 +213,12 @@ SESSION.headers.update({
     'x-fantasy-filter': '{}',
 })
 
-def fetch_season(year):
+def fetch_season(year, league_id):
     """Fetch one season from ESPN. Returns parsed JSON or None."""
     if year >= 2018:
-        url = f"{ESPN_API_BASE}/seasons/{year}/segments/0/leagues/{LEAGUE_ID}"
+        url = f"{ESPN_API_BASE}/seasons/{year}/segments/0/leagues/{league_id}"
     else:
-        url = f"{ESPN_API_BASE}/leagueHistory/{LEAGUE_ID}"
+        url = f"{ESPN_API_BASE}/leagueHistory/{league_id}"
 
     # Fetch each view separately and merge — ESPN sometimes returns 202/empty
     # when multiple views are requested together
@@ -346,7 +370,7 @@ def process_season(year, data):
     }
 
 
-def build_dataset(seasons_data):
+def build_dataset(seasons_data, splice_2014=False, playoff_records_from=2017):
     """
     Combine all processed seasons into the data structure the HTML expects.
 
@@ -354,11 +378,14 @@ def build_dataset(seasons_data):
     derived from the all_matchups list — every game counts. Per-season
     standings tables stay in sync with ESPN's record.overall (regular season
     only) so per-year W-L matches what users see in ESPN.
+
+    `splice_2014`: if True, splice spreadsheet-derived 2014 matchups into the
+    dataset (used for West the Box God which is missing 2014 from ESPN).
+    `playoff_records_from`: earliest year that counts toward "Most Playoff
+    Wins" — per-league because some leagues had earlier rosters/brackets
+    that aren't comparable to the current setup.
     """
-    # Earliest season eligible for "Most Playoff Wins" (the league
-    # stabilized to its current 12 owners in 2017; pre-2017 data has known
-    # gaps and ambiguous brackets).
-    PLAYOFF_RECORDS_FROM_YEAR = 2017
+    PLAYOFF_RECORDS_FROM_YEAR = playoff_records_from
 
     player_agg = {}     # name -> aggregate dict (filled in step 3 below)
     seasons_ui = {}     # year -> [standings rows]
@@ -436,7 +463,7 @@ def build_dataset(seasons_data):
             })
 
     # ---- Step 2: 2014 splice (hand-coded matchups; pre-2017, no playoff tagging) ----
-    if 2014 not in seasons_ui and FALLBACK_2014_MATCHUPS:
+    if splice_2014 and 2014 not in seasons_ui and FALLBACK_2014_MATCHUPS:
         teams_2014 = {}
         for period, winner, loser, w_pts, l_pts in FALLBACK_2014_MATCHUPS:
             is_playoff = period > 12
@@ -618,14 +645,20 @@ def build_dataset(seasons_data):
                     run_start = None
     records_raw["longest_win_streak"] = longest
 
+    # Active owners = anyone in the most recent season's standings. Used by
+    # the UI to default the standings tab to current members.
+    active_owners = []
+    if seasons_ui:
+        latest_year = max(seasons_ui.keys())
+        active_owners = [row["owner"] for row in seasons_ui[latest_year]]
+
     return {
-        "players":    players,
-        "h2h_names":  h2h_names,
-        "h2h_matrix": h2h_matrix,
-        "seasons":    {str(k): v for k, v in seasons_ui.items()},
-        "records_raw": records_raw,
-        "fetched_at": datetime.now().isoformat(),
-        "league_id":  LEAGUE_ID,
+        "players":       players,
+        "h2h_names":     h2h_names,
+        "h2h_matrix":    h2h_matrix,
+        "seasons":       {str(k): v for k, v in seasons_ui.items()},
+        "records_raw":   records_raw,
+        "active_owners": active_owners,
     }
 
 
@@ -642,7 +675,9 @@ def inject_into_html(data):
     block = f"<script id=\"espn-data\">window.ESPN_DATA={data_json};</script>"
 
     if 'id="espn-data"' in html:
-        html = re.sub(r'<script id="espn-data">.*?</script>', block, html, flags=re.DOTALL)
+        # Use a lambda so `\u...` sequences in the JSON aren't interpreted as
+        # regex backreferences in the replacement.
+        html = re.sub(r'<script id="espn-data">.*?</script>', lambda _m: block, html, flags=re.DOTALL)
     else:
         # Inject right before the main script block so ESPN_DATA is defined
         # before loadData() runs
@@ -652,16 +687,11 @@ def inject_into_html(data):
         f.write(html)
 
 
-def main():
-    print("🏈  #MillerMetrics — ESPN Data Fetcher")
-    print("=" * 45)
-    print(f"League ID : {LEAGUE_ID}")
-    print(f"Seasons   : {FIRST_SEASON} – {CURRENT_YEAR}")
-    print()
-
-    # Quick auth check before looping all seasons
+def check_auth():
+    """Quick auth ping against ESPN's API. Exits on failure."""
     print("🔐  Checking ESPN authentication...", end=" ", flush=True)
-    test_url = f"{ESPN_API_BASE}/seasons/2024/segments/0/leagues/{LEAGUE_ID}"
+    # Any league works for the cookie check; use the first configured one.
+    test_url = f"{ESPN_API_BASE}/seasons/2024/segments/0/leagues/{LEAGUES[0]['id']}"
     try:
         r = SESSION.get(test_url, params={"view": "mTeam"}, timeout=15)
         print(f"HTTP {r.status_code}")
@@ -680,12 +710,17 @@ def main():
     except Exception as e:
         print(f"\n❌  {e}\n   Status: {r.status_code}, Preview: {r.text[:200]!r}")
         sys.exit(1)
-    print()
+
+
+def fetch_league(cfg):
+    """Fetch + process all seasons for a single league. Returns league blob."""
+    print(f"\n{cfg['emoji']}  {cfg['name']}  (league {cfg['id']})")
+    print("-" * 45)
 
     processed = []
-    for year in range(FIRST_SEASON, CURRENT_YEAR + 1):
+    for year in range(cfg["first_season"], CURRENT_YEAR + 1):
         print(f"  {year} ... ", end="", flush=True)
-        raw = fetch_season(year)
+        raw = fetch_season(year, cfg["id"])
         if not raw:
             print("skipped (no data)")
             continue
@@ -693,21 +728,55 @@ def main():
         if not season or not season["teams"]:
             print("skipped (empty)")
             continue
-        n_teams = len(season["teams"])
-        n_games = len(season["matchups"])
-        print(f"✓  {n_teams} teams · {n_games} matchups")
+        print(f"✓  {len(season['teams'])} teams · {len(season['matchups'])} matchups")
         processed.append(season)
-        time.sleep(0.3)  # be polite to ESPN's servers
+        time.sleep(0.3)
 
     if not processed:
-        print("\n❌  No data fetched. Check your credentials and league ID.")
+        print(f"  ⚠  No data fetched for {cfg['name']}.")
+        return None
+
+    data = build_dataset(
+        processed,
+        splice_2014=cfg["fallback_2014"],
+        playoff_records_from=cfg.get("playoff_records_from", 2017),
+    )
+    total_games = sum(len(s["matchups"]) for s in processed)
+    print(f"  📊  {len(data['players'])} managers · {total_games} total matchups")
+
+    return {
+        "id":            cfg["id"],
+        "name":          cfg["name"],
+        "emoji":         cfg["emoji"],
+        "first_season":  cfg["first_season"],
+        **data,
+    }
+
+
+def main():
+    print("🏈  #MillerMetrics — ESPN Data Fetcher")
+    print("=" * 45)
+    print(f"Leagues   : {', '.join(L['name'] for L in LEAGUES)}")
+    print(f"Current   : {CURRENT_YEAR}")
+    print()
+
+    check_auth()
+
+    leagues_out = {}
+    for cfg in LEAGUES:
+        blob = fetch_league(cfg)
+        if blob:
+            leagues_out[cfg["key"]] = blob
+
+    if not leagues_out:
+        print("\n❌  No data fetched for any league. Check credentials.")
         sys.exit(1)
 
-    print(f"\n📊  Building dataset from {len(processed)} seasons...")
-    data = build_dataset(processed)
-
-    total_games = sum(len(s["matchups"]) for s in processed)
-    print(f"   {len(data['players'])} managers · {total_games} total matchups")
+    data = {
+        "default":    LEAGUES[0]["key"],
+        "fetched_at": datetime.now().isoformat(),
+        "leagues":    leagues_out,
+    }
 
     print(f"\n💾  Injecting into {HTML_FILE}...")
     inject_into_html(data)
