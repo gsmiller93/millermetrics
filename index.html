@@ -10,22 +10,29 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #06090f;
-  --surface: #0d1422;
-  --surface2: #141d30;
-  --surface3: #1a2540;
-  --border: #1e2d4a;
-  --border2: #253558;
-  --green: #00e676;
-  --green-dim: #00b85a;
-  --gold: #ffc700;
-  --red: #ff4757;
-  --blue: #2979ff;
-  --text: #dde4f0;
-  --text-muted: #5e7399;
-  --text-dim: #8a9fc0;
-  --win: #00e676;
-  --lose: #ff4757;
+  /* Charcoal foundation — slightly warm, never pure black. */
+  --bg: #161719;
+  --surface: #1e1f23;
+  --surface2: #25262e;
+  --surface3: #2d2f38;
+  --border: #2e3038;
+  --border2: #3a3d47;
+
+  /* Desaturated accents — green/red/blue intentionally muted so no single
+     hue dominates the page. Gold reserved for trophy/finish highlights. */
+  --green:     #8fb89e;  /* soft sage — wins, positive */
+  --green-dim: #6f9580;
+  --gold:      #c9b285;  /* warm muted gold — championships, 1st place */
+  --red:       #c89c95;  /* dusty rose — losses, negative */
+  --blue:      #9bb4ce;  /* pale steel — neutral data, info */
+
+  --text:       #d8dade;
+  --text-muted: #8b8f99;
+  --text-dim:   #686c75;
+
+  --win:  #8fb89e;
+  --lose: #c89c95;
+
   --font-head: 'Barlow Condensed', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 }
@@ -41,7 +48,7 @@ body {
 
 /* HEADER */
 .site-header {
-  background: linear-gradient(180deg, #0d1830 0%, var(--bg) 100%);
+  background: linear-gradient(180deg, #1e1f23 0%, var(--bg) 100%);
   border-bottom: 1px solid var(--border);
   padding: 0 2rem;
   position: sticky;
@@ -169,7 +176,7 @@ body {
 }
 .toggle-btn.active {
   background: var(--green);
-  color: #000;
+  color: var(--bg);
 }
 
 .standings-table-wrap { overflow-x: auto; }
@@ -518,7 +525,7 @@ body {
   transition: all 0.2s;
 }
 .year-pill:hover { border-color: var(--border2); color: var(--text-dim); }
-.year-pill.active { background: var(--green); color: #000; border-color: var(--green); }
+.year-pill.active { background: var(--green); color: var(--bg); border-color: var(--green); }
 
 .season-table-wrap { overflow-x: auto; }
 .season-table {
@@ -554,9 +561,9 @@ body {
   font-weight: 900;
   font-size: 0.95rem;
 }
-.finish-1 { background: var(--gold); color: #000; }
-.finish-2 { background: #c0c0c0; color: #000; }
-.finish-3 { background: #cd7f32; color: #fff; }
+.finish-1 { background: var(--gold);  color: var(--bg); }
+.finish-2 { background: #a8acb3;       color: var(--bg); }  /* muted silver */
+.finish-3 { background: #b3927a;       color: var(--bg); }  /* muted bronze */
 .finish-other { background: var(--surface3); color: var(--text-dim); }
 
 .team-name-season {
@@ -716,11 +723,11 @@ body {
     <div class="h2h-layout">
       <div>
         <div class="matrix-legend">
-          <span class="legend-item"><span class="legend-swatch" style="background:#450a0a"></span> Dominated</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#7f1d1d"></span> Losing Edge</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#1e293b"></span> Even</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#166534"></span> Winning Edge</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#14532d"></span> Dominant</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#3d1f24"></span> Dominated</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#2e2226"></span> Losing Edge</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#252630"></span> Even</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#26302a"></span> Winning Edge</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#1e2c25"></span> Dominant</span>
           <span style="margin-left:auto">Numbers = wins by Row player vs Column player</span>
         </div>
         <div class="matrix-wrap" id="matrix-wrap"></div>
@@ -1007,11 +1014,11 @@ function getPlayerByH2hIdx(idx) {
 function getCellColor(wins, total) {
   if (total === 0) return null;
   const r = wins / total;
-  if (r >= 0.7)  return { bg: '#14532d', text: '#4ade80' };  // dominant — dark green
-  if (r >= 0.55) return { bg: '#166534', text: '#86efac' };  // winning edge — green
-  if (r >= 0.45) return { bg: '#1e293b', text: '#94a3b8' };  // roughly even — neutral
-  if (r >= 0.3)  return { bg: '#7f1d1d', text: '#fca5a5' };  // losing edge — red
-  return { bg: '#450a0a', text: '#f87171' };                  // dominated — dark red
+  if (r >= 0.7)  return { bg: '#1e2c25', text: '#a8d4ba' };  // dominant — deep sage
+  if (r >= 0.55) return { bg: '#26302a', text: '#9bc7a8' };  // winning edge — sage
+  if (r >= 0.45) return { bg: '#252630', text: '#9da3ad' };  // roughly even — neutral
+  if (r >= 0.3)  return { bg: '#2e2226', text: '#c89c95' };  // losing edge — rose
+  return { bg: '#3d1f24', text: '#d8a8a1' };                  // dominated — deep rose
 }
 
 // ===========================
